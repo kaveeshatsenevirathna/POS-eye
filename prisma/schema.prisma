@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client"
+  output = "../apps/api/src/generated"
+}
+datasource db {
+  provider = "postgresql"
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique
+  name String
+  passwordHash String
+  active Boolean @default(true)
+  demo Boolean @default(false)
+  createdAt DateTime @default(now())
+  lastLogin DateTime?
+  sessions Session[]
+  memberships BusinessMembership[]
+}
+model Session {
+  tokenHash String @id
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+model Business {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  type String
+  currency String
+  timezone String
+  demo Boolean @default(false)
+  createdAt DateTime @default(now())
+  settings BusinessSettings?
+  memberships BusinessMembership[]
+  modules EnabledModule[]
+  categories Category[]
+  products Product[]
+  orders Order[]
+  movements InventoryMovement[]
+  refunds Refund[]
+  expenses Expense[]
+  logs AuditLog[]
+  customers Customer[]
+  suppliers Supplier[]
+  tables RestaurantTable[]
+  tickets KitchenTicket[]
+}
+model BusinessMembership {
+  businessId String @db.Uuid
+  userId String @db.Uuid
+  role String
+  active Boolean @default(true)
+  business Business @relation(fields: [businessId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  shifts EmployeeShift[]
+  @@id([businessId, userId])
+  @@index([userId])
+}
+model BusinessSettings {
+  businessId String @id @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  taxRate Decimal @default(0) @db.Decimal(6,3)
+  taxInclusive Boolean @default(false)
+  allowOversell Boolean @default(false)
+  allowManualCard Boolean @default(false)
+  staffDiscountLimit Decimal @default(0) @db.Decimal(6,3)
+  accent String @default("#a6ef85")
+  receiptHeader String @default("")
+  receiptFooter String @default("")
+  receiptWidth Int @default(80)
+  address String @default("")
+  phone String @default("")
+  email String @default("")
+}
+model EnabledModule {
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  key String
+  @@id([businessId, key])
+}
+model Category {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  name String
+  products Product[]
+  @@unique([businessId, name])
+  @@unique([businessId, id])
+}
+model Product {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  supplierId String? @db.Uuid
+  supplier Supplier? @relation(fields: [businessId, supplierId], references: [businessId, id], onDelete: Restrict)
+  categoryId String? @db.Uuid
+  category Category? @relation(fields: [businessId, categoryId], references: [businessId, id], onDelete: Restrict)
+  name String
+  description String @default("")
+  sku String?
+  barcode String?
+  image String?
+  price Decimal @db.Decimal(14,2)
+  cost Decimal? @db.Decimal(14,2)
+  stock Decimal @default(0) @db.Decimal(14,3)
+  reorder Decimal @default(0) @db.Decimal(14,3)
+  metadata Json
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items OrderItem[]
+  movements InventoryMovement[]
+  @@unique([businessId, id])
+  @@unique([businessId, sku])
+  @@unique([businessId, barcode])
+}
+model InventoryMovement {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  productId String @db.Uuid
+  product Product @relation(fields: [businessId, productId], references: [businessId, id])
+  actorId String @db.Uuid
+  delta Decimal @db.Decimal(14,3)
+  reason String
+  createdAt DateTime @default(now())
+  @@index([businessId, productId, createdAt])
+}
+model Order {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  cashierId String @db.Uuid
+  customerId String? @db.Uuid
+  customer Customer? @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
+  customerName String?
+  requestKey String @db.Uuid
+  fingerprint String
+  currency String
+  receipt Json
+  gross Decimal @db.Decimal(16,2)
+  discount Decimal @db.Decimal(16,2)
+  tax Decimal @db.Decimal(16,2)
+  revenue Decimal @db.Decimal(16,2)
+  total Decimal @db.Decimal(16,2)
+  createdAt DateTime @default(now())
+  items OrderItem[]
+  payments Payment[]
+  refund Refund?
+  ticketId String? @db.Uuid
+  ticket KitchenTicket? @relation(fields: [businessId, ticketId], references: [businessId, id], onDelete: Restrict)
+  @@unique([businessId, ticketId])
+  @@unique([businessId, requestKey])
+  @@unique([businessId, id])
+  @@index([businessId, createdAt])
+}
+model OrderItem {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  orderId String @db.Uuid
+  order Order @relation(fields: [businessId, orderId], references: [businessId, id])
+  productId String @db.Uuid
+  product Product @relation(fields: [businessId, productId], references: [businessId, id])
+  name String
+  category String?
+  price Decimal @db.Decimal(14,2)
+  cost Decimal? @db.Decimal(14,2)
+  quantity Decimal @db.Decimal(14,3)
+  stockDeducted Boolean
+  @@index([businessId, orderId])
+}
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  orderId String @db.Uuid
+  order Order @relation(fields: [businessId, orderId], references: [businessId, id])
+  method String
+  amount Decimal @db.Decimal(16,2)
+  tendered Decimal? @db.Decimal(16,2)
+  reference String?
+  @@index([businessId, orderId])
+}
+model Refund {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  orderId String @db.Uuid
+  order Order @relation(fields: [businessId, orderId], references: [businessId, id])
+  actorId String @db.Uuid
+  reason String
+  restocked Boolean
+  createdAt DateTime @default(now())
+  @@unique([businessId, orderId])
+  @@index([businessId, createdAt])
+}
+model Expense {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  name String
+  category String
+  amount Decimal @db.Decimal(14,2)
+  createdAt DateTime @default(now())
+  @@index([businessId, createdAt])
+}
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  actorId String @db.Uuid
+  action String
+  target String
+  createdAt DateTime @default(now())
+  @@index([businessId, createdAt])
+}
+model RestaurantTable {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  name String
+  active Boolean @default(true)
+  tickets KitchenTicket[]
+  @@unique([businessId, id])
+  @@unique([businessId, name])
+}
+
+model KitchenTicket {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  tableId String? @db.Uuid
+  table RestaurantTable? @relation(fields: [businessId, tableId], references: [businessId, id], onDelete: Restrict)
+  cashierId String @db.Uuid
+  orderType String
+  instructions String
+  lines Json
+  status String @default("QUEUED")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sale Order?
+  @@unique([businessId, id])
+  @@index([businessId, status, createdAt])
+}
+
+model EmployeeShift {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  membership BusinessMembership @relation(fields: [businessId, userId], references: [businessId, userId])
+  userId String @db.Uuid
+  openingCash Decimal @db.Decimal(14,2)
+  closingCash Decimal? @db.Decimal(14,2)
+  openedAt DateTime @default(now())
+  closedAt DateTime?
+  @@index([businessId, userId, openedAt])
+}
+
+
+
+
+
+
+model Customer {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  name String
+  email String
+  phone String
+  notes String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  orders Order[]
+  @@unique([businessId, id])
+  @@index([businessId, active, name])
+}
+
+model Supplier {
+  id String @id @default(uuid()) @db.Uuid
+  businessId String @db.Uuid
+  business Business @relation(fields: [businessId], references: [id])
+  name String
+  email String
+  phone String
+  notes String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  products Product[]
+  @@unique([businessId, id])
+  @@index([businessId, active, name])
+}

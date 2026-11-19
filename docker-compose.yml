@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: omnipos
+      POSTGRES_PASSWORD: omnipos_dev
+      POSTGRES_DB: omnipos
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pos_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omnipos -d omnipos"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  pos_data:
