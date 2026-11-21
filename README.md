@@ -1,6 +1,6 @@
-﻿# POS Eye
+﻿# OmniPOS
 
-POS Eye is a configurable POS workspace built with React, Express, Prisma, and PostgreSQL. This repository contains an initial implementation of the core catalog-to-sale workflow. See [implementation status](docs/architecture.md#implementation-status) before planning a deployment.
+OmniPOS is a configurable POS workspace built with React, Express, Prisma, and PostgreSQL. This repository contains an initial implementation of the core catalog-to-sale workflow. See [implementation status](docs/architecture.md#implementation-status) before planning a deployment.
 
 ## Local setup
 
@@ -21,7 +21,7 @@ npm.cmd run api
 npm.cmd run dev -- --strictPort
 ```
 
-Open `http://127.0.0.r1:5173/setup`. Create your first admin and business, add a product, receive opening stock in Inventory, and create a cashier membership. At checkout, select items, review the server quote, enter cash tendered, and complete the sale. The receipt PDF uses the configured thermal width. Print it from a PDF viewer using your printer driver and the matching paper size.
+Open `http://127.0.0.1:5173/setup`. Create your first admin and business, add a product, receive opening stock in Inventory, and create a cashier membership. At checkout, select items, review the server quote, enter cash tendered, and complete the sale. The receipt PDF uses the configured thermal width. Print it from a PDF viewer using your printer driver and the matching paper size.
 
 ### Optional demo data
 
@@ -29,8 +29,8 @@ Set `ALLOW_DEMO_SEED=true` in `.env` and run `npm.cmd run db:seed` against a dev
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Admin | admin@omnipos.test | OmniPOS-demo-admin! |
-| Staff | cashier@omnipos.test | OmniPOS-demo-staff! |
+| Admin | local-admin@omnipos.test | Local-admin-password! |
+| Staff | local-staff@omnipos.test | Local-staff-password! |
 
 Production rejects demo accounts and memberships in demo businesses. Use a separate production database, disable demo seeding, set `ALLOW_SIGNUP=false` after provisioning, and serve the built frontend and API over the same HTTPS origin. Set `NODE_ENV=production` only when HTTPS is available, since the session cookie then requires it.
 
