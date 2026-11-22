@@ -21,7 +21,9 @@ npm.cmd run api
 npm.cmd run dev -- --strictPort
 ```
 
-Open `http://127.0.0.1:5173/setup`. Create your first admin and business, add a product, receive opening stock in Inventory, and create a cashier membership. At checkout, select items, review the server quote, enter cash tendered, and complete the sale. The receipt PDF uses the configured thermal width. Print it from a PDF viewer using your printer driver and the matching paper size.
+Open `http://127.0.0.1:5173/setup`. Create your first admin and business; during setup, you can optionally create a staff account with separate login details. Both accounts use the same sign-in page. You can add more accounts and choose their roles later from Employees. Add a product, receive opening stock in Inventory, and create a cashier membership. At checkout, select items, review the server quote, enter cash tendered, and complete the sale. The receipt PDF uses the configured thermal width. Print it from a PDF viewer using your printer driver and the matching paper size.
+
+The API health check is available at `http://127.0.0.1:3001/api/health`.
 
 ### Optional demo data
 
@@ -29,8 +31,8 @@ Set `ALLOW_DEMO_SEED=true` in `.env` and run `npm.cmd run db:seed` against a dev
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Admin | local-admin@omnipos.test | Local-admin-password! |
-| Staff | local-staff@omnipos.test | Local-staff-password! |
+| Admin | admin@omnipos.test | OmniPOS-demo-admin! |
+| Staff | cashier@omnipos.test | OmniPOS-demo-staff! |
 
 Production rejects demo accounts and memberships in demo businesses. Use a separate production database, disable demo seeding, set `ALLOW_SIGNUP=false` after provisioning, and serve the built frontend and API over the same HTTPS origin. Set `NODE_ENV=production` only when HTTPS is available, since the session cookie then requires it.
 

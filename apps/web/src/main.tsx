@@ -29,6 +29,7 @@ function Login({ go, setup }: { go: (path: string) => void; setup: boolean }) {
   const action = useAction('');
   const query = useQueryClient();
   const [step, setStep] = useState(1);
+  const [createStaff, setCreateStaff] = useState(false);
   const [type, setType] = useState<keyof typeof presets>('restaurant');
   const { register, handleSubmit, formState } = useForm<{ email: string; password: string }>();
   const [draft, setDraft] = useState<Record<string, FormDataEntryValue>>({});
@@ -41,7 +42,7 @@ function Login({ go, setup }: { go: (path: string) => void; setup: boolean }) {
     <div className="auth-art"><Brand/><div><div className="art-grid"><Grid2X2 size={108} strokeWidth={1}/></div><h1>Run your business.<br/>Own the counter.</h1><p>Sales, stock, and performance in one workspace.</p></div></div>
     <main className="auth-main"><div className="auth-card">
       <small className="eyebrow">{setup ? 'BUSINESS SETUP · STEP ' + step + ' OF 3' : 'POS EYE WORKSPACE'}</small>
-      <h1>{setup ? ['Business information', 'Configure your POS', 'Create your admin account'][step - 1] : 'Welcome back'}</h1>
+      <h1>{setup ? ['Business information', 'Configure your POS', 'Create login accounts'][step - 1] : 'Welcome back'}</h1>
       <p>{setup ? 'Set up your business workspace.' : 'Sign in to open your workspace.'}</p>
       {action.error && <Notice>{action.error}</Notice>}
       {!setup ? <form className="stack" onSubmit={handleSubmit(v => action.run(() => api('login', '', 'POST', v), () => launch()))}>
@@ -54,6 +55,7 @@ function Login({ go, setup }: { go: (path: string) => void; setup: boolean }) {
         if (step < 3) { setDraft({ ...draft, ...v }); setStep(step + 1); return; }
         void action.run(() => api<{ businessId: string }>('setup', '', 'POST', {
           admin: { name: v.adminName, email: v.email, password: v.password },
+          ...(createStaff && { staff: { name: v.staffName, email: v.staffEmail, password: v.staffPassword } }),
           business: { name: draft.businessName, type, currency: draft.currency, timezone: draft.timezone },
           settings: { taxRate: Number(draft.taxRate ?? 0), accent: draft.accent }, modules: features,
         }), result => launch(result.businessId));
@@ -70,9 +72,16 @@ function Login({ go, setup }: { go: (path: string) => void; setup: boolean }) {
           <Field label="Tax rate (%)"><input name="taxRate" type="number" step=".001" min="0" max="100" defaultValue={String(draft.taxRate ?? '0')}/></Field>
         </>}
         {step === 3 && <>
+          <p>Admin and staff use separate email addresses and passwords on the same sign-in page.</p>
           <Field label="Full name"><input name="adminName" required autoComplete="name"/></Field>
-          <Field label="Email"><input name="email" type="email" required autoComplete="email"/></Field>
-          <Field label="Password"><input name="password" type="password" minLength={12} required autoComplete="new-password"/></Field>
+          <Field label="Admin email"><input name="email" type="email" required autoComplete="email"/></Field>
+          <Field label="Admin password (12+ characters)"><input name="password" type="password" minLength={12} required autoComplete="new-password"/></Field>
+          <label className="check"><input type="checkbox" checked={createStaff} onChange={event => setCreateStaff(event.target.checked)}/> Create a staff account now</label>
+          {createStaff && <>
+            <Field label="Staff full name"><input name="staffName" required autoComplete="name"/></Field>
+            <Field label="Staff email (different from Admin)"><input name="staffEmail" type="email" required autoComplete="email"/></Field>
+            <Field label="Staff password (12+ characters)"><input name="staffPassword" type="password" minLength={12} required autoComplete="new-password"/></Field>
+          </>}
         </>}
         <div className="actions">{step > 1 && <button type="button" onClick={() => setStep(step - 1)}>Back</button>}<button className="primary" disabled={action.busy}>{step === 3 ? 'Launch workspace' : 'Continue'}</button></div>
       </form>}

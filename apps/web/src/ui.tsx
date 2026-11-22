@@ -24,7 +24,9 @@ export async function api<T>(path: string, business = '', method = 'GET', body?:
   });
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.error ?? 'Request failed (' + response.status + ')');
+    if (error?.error) throw new Error(error.error);
+    if (response.status >= 500) throw new Error('POS Eye cannot reach the API. Make sure the local API is running on port 3001.');
+    throw new Error('Request failed (' + response.status + ')');
   }
   if (response.status === 204 || !response.headers.get('content-type')?.includes('application/json')) return undefined as T;
   return response.json() as Promise<T>;
