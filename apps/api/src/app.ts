@@ -68,7 +68,14 @@ app.post('/api/login', loginLimit, async (req, res) => {
 app.post('/api/logout', async (req, res) => { await endSession(req, res); res.sendStatus(204); });
 app.post('/api/setup', loginLimit, async (req, res) => {
   if (process.env.ALLOW_SIGNUP !== 'true') throw new Failure(403, 'Business signup is disabled');
-  const input = z.object({ admin: profile, business: businessData, settings: settingsData.partial().default({}), modules: z.array(z.enum(modules)).optional() }).parse(req.body);
+  const input = z.object({
+    admin: profile, staff: profile.optional(), business: businessData,
+    settings: settingsData.partial().default({}), modules: z.array(z.enum(modules)).optional(),
+  }).superRefine((data, context) => {
+    if (data.staff?.email === data.admin.email) {
+      context.addIssue({ code: 'custom', path: ['staff', 'email'], message: 'Admin and staff accounts must use different email addresses' });
+    }
+  }).parse(req.body);
   const hashed = passwordHash(input.admin.password);
   const selected = [...new Set(input.modules ?? presets[input.business.type])];
   const result = await atomic(async tx => {
@@ -77,6 +84,13 @@ app.post('/api/setup', loginLimit, async (req, res) => {
       ...input.business, settings: { create: input.settings }, memberships: { create: { userId: user.id, role: 'ADMIN' } },
       modules: { create: selected.map(key => ({ key })) },
     } });
+    if (input.staff) {
+      const staff = await tx.user.create({ data: {
+        name: input.staff.name, email: input.staff.email, passwordHash: passwordHash(input.staff.password),
+        memberships: { create: { businessId: business.id, role: 'STAFF' } },
+      } });
+      await audit(tx, business.id, user.id, 'employee.created', staff.id);
+    }
     return { userId: user.id, businessId: business.id };
   });
   await endSession(req, res);

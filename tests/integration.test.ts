@@ -21,9 +21,10 @@ test('tenant boundaries, roles, concurrent checkout, immutable sales and refund 
   }
   const key = randomUUID().slice(0, 10);
   const password = 'Integration-password!';
-  async function setup(suffix: string) {
+  async function setup(suffix: string, staff?: { name: string; email: string; password: string }) {
     const response = await request('setup', 'POST', {
       admin: { email: suffix + '-' + key + '@omnipos.test', name: 'Admin ' + suffix, password },
+      ...(staff && { staff }),
       business: { name: 'Integration ' + suffix, type: 'restaurant', currency: 'USD', timezone: 'UTC' },
       settings: { taxRate: 10, staffDiscountLimit: 5 },
     });
@@ -33,8 +34,17 @@ test('tenant boundaries, roles, concurrent checkout, immutable sales and refund 
   try {
     assert.equal((await request('products')).status, 401);
     assert.equal((await request('login', 'POST', { email: 'unknown@omnipos.test', password })).status, 401);
-    const a = await setup('a');
+    const initialStaff = { email: 'initial-staff-' + key + '@omnipos.test', name: 'Initial Staff', password };
+    const a = await setup('a', initialStaff);
     const b = await setup('b');
+    const adminLogin = await request('login', 'POST', { email: 'a-' + key + '@omnipos.test', password });
+    const staffLogin = await request('login', 'POST', { email: initialStaff.email, password: initialStaff.password });
+    assert.equal(adminLogin.status, 200);
+    assert.equal(staffLogin.status, 200);
+    const staffIdentity = await request('me', 'GET', undefined, staffLogin.cookie);
+    assert.equal(staffIdentity.data.memberships[0].role, 'STAFF');
+    assert.equal(staffIdentity.data.memberships[0].business.id, a.id);
+    assert.equal((await request('employees', 'GET', undefined, staffLogin.cookie, a.id)).status, 403);
     assert.equal((await request('products', 'GET', undefined, a.cookie, b.id)).status, 403);
     const productData = { name: 'Almond tart', price: '10.00', cost: '4.00' };
     const product = await request('products/new', 'PUT', productData, a.cookie, a.id);
