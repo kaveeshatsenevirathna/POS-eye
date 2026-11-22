@@ -68,11 +68,14 @@ export function Pos({ config, initialTicket, onTicketDone }: { config: Config; i
   function add(product: Product) { if (!initialTicket && !quoted) update(product.id, String(Number(cart[product.id] ?? 0) + 1)); }
   function submitPayment() {
     if (!quoted) return;
-    const cardAmount = method === 'MANUAL_CARD' ? Number(quoted.total) : method === 'SPLIT' ? Number(card) : 0;
-    const balance = Number(quoted.total) - cardAmount;
+    const total = Number(quoted.total);
+    const cardAmount = method === 'MANUAL_CARD' ? total : method === 'SPLIT' ? Number(card) : 0;
+    const qrAmount = method === 'QR' ? total : 0;
+    const cashAmount = total - cardAmount - qrAmount;
     const payments: Payment[] = [];
-    if (balance > 0) payments.push({ method: 'CASH', amount: balance.toFixed(2), tendered });
+    if (cashAmount > 0) payments.push({ method: 'CASH', amount: cashAmount.toFixed(2), tendered });
     if (cardAmount > 0) payments.push({ method: 'MANUAL_CARD', amount: cardAmount.toFixed(2), reference });
+    if (qrAmount > 0) payments.push({ method: 'QR', amount: qrAmount.toFixed(2), reference });
     const payload = pending ?? { requestKey: crypto.randomUUID(), ticketId: initialTicket?.id, customerId: customer || undefined, lines, discount, payments };
     setPending(payload);
     void action.run(() => api<Sale>('checkout', id, 'POST', payload), result => {
@@ -123,10 +126,17 @@ export function Pos({ config, initialTicket, onTicketDone }: { config: Config; i
       {quoted && <form className="stack" onSubmit={event => { event.preventDefault(); submitPayment(); }}>
         <dl className="totals"><dt>Subtotal</dt><dd>{money(quoted.gross, config.currency)}</dd><dt>Discount</dt><dd>{money(quoted.discount, config.currency)}</dd><dt>Tax{config.settings.taxInclusive ? ' included' : ''}</dt><dd>{money(quoted.tax, config.currency)}</dd><dt>Total</dt><dd>{money(quoted.total, config.currency)}</dd></dl>
         {!pending && Number(quoted.total) > 0 && <>
-          <Field label="Payment method"><select value={method} onChange={e => setMethod(e.target.value)}><option value="CASH">Cash</option>{config.settings.allowManualCard && <><option value="MANUAL_CARD">External card terminal (manual)</option><option value="SPLIT">Cash + external card terminal</option></>}</select></Field>
+          <Field label="Payment method"><select value={method} onChange={e => { setMethod(e.target.value); setCard(''); setReference(''); }}>
+            <option value="CASH">Cash</option>
+            <option value="MANUAL_CARD" disabled={!config.settings.allowManualCard}>Card{config.settings.allowManualCard ? ' (manual terminal confirmation)' : ' (enable in Business Settings)'}</option>
+            <option value="QR">QR payment (manual confirmation)</option>
+            {config.settings.allowManualCard && <option value="SPLIT">Cash + card</option>}
+          </select></Field>
+          {(method === 'MANUAL_CARD' || method === 'QR' || method === 'SPLIT') && <p>Confirm receipt in your external terminal or QR app first. POS Eye records the reference but does not process the payment.</p>}
           {method === 'SPLIT' && <Field label="Card portion"><input required type="number" step=".01" min=".01" max={Number(quoted.total) - .01} value={card} onChange={e => setCard(e.target.value)}/></Field>}
-          {method !== 'CASH' && <Field label="Approved terminal transaction reference"><input required maxLength={80} value={reference} onChange={e => setReference(e.target.value)}/></Field>}
-          {method !== 'MANUAL_CARD' && <><Field label="Cash received"><input required type="number" step=".01" min="0" value={tendered} onChange={e => setTendered(e.target.value)}/></Field><small>Change {money(Math.max(0, Number(tendered) - Number(quoted.total) + (method === 'SPLIT' ? Number(card) : 0)), config.currency)}</small></>}
+          {(method === 'MANUAL_CARD' || method === 'SPLIT') && <Field label="Approved terminal transaction reference"><input required maxLength={80} value={reference} onChange={e => setReference(e.target.value)}/></Field>}
+          {method === 'QR' && <Field label="QR transaction reference"><input required maxLength={80} value={reference} onChange={e => setReference(e.target.value)}/></Field>}
+          {(method === 'CASH' || method === 'SPLIT') && <><Field label="Cash received"><input required type="number" step=".01" min="0" value={tendered} onChange={e => setTendered(e.target.value)}/></Field><small>Change {money(Math.max(0, Number(tendered) - Number(quoted.total) + (method === 'SPLIT' ? Number(card) : 0)), config.currency)}</small></>}
         </>}
         {pending && <p>Retry uses the same checkout reference. Check Sales before starting a new payment attempt.</p>}
         <div className="actions"><button type="button" disabled={action.busy} onClick={() => { if (!pending || window.confirm('Verify the sale status before abandoning this attempt. Continue?')) { setQuote(null); setPending(null); } }}>Back</button><button className="primary" disabled={action.busy}>{pending ? 'Retry checkout' : 'Complete sale'}</button></div>

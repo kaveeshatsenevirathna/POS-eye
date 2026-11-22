@@ -15,6 +15,7 @@ export const checkoutInput = basket.extend({
   payments: z.array(z.discriminatedUnion('method', [
     z.object({ method: z.literal('CASH'), amount, tendered: amount }),
     z.object({ method: z.literal('MANUAL_CARD'), amount, reference: z.string().trim().min(1).max(80).refine(value => !/(?:\d[ -]?){13}/.test(value), 'Use the terminal approval reference only') }),
+    z.object({ method: z.literal('QR'), amount, reference: z.string().trim().min(1).max(80) }),
   ])).max(8),
 });
 export const orderDetails = { items: true, payments: true, refund: true } as const;

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('administrator launches a restaurant and cashier completes a cash sale', async ({ page }) => {
+test('cashier completes cash, card, and QR sales', async ({ page }) => {
   const stamp = Date.now();
   await page.goto('/setup');
   await page.getByLabel('Business name').fill('Test restaurant ' + stamp);
@@ -8,9 +8,13 @@ test('administrator launches a restaurant and cashier completes a cash sale', as
   await page.getByLabel('Tax rate (%)').fill('10');
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByLabel('Full name').fill('Test Administrator');
-  await page.getByLabel('Email').fill('admin-' + stamp + '@omnipos.test');
-  await page.getByLabel('Password').fill('test-password-long');
+  await page.getByLabel('Admin email').fill('admin-' + stamp + '@omnipos.test');
+  await page.getByLabel('Admin password (12+ characters)').fill('test-password-long');
   await page.getByRole('button', { name: 'Launch workspace' }).click();
+  await page.getByRole('link', { name: 'Business Settings' }).click();
+  await page.getByLabel('Allow external card terminal confirmation').check();
+  await page.getByRole('button', { name: 'Save settings' }).click();
+  await expect(page.getByText('Settings saved.')).toBeVisible();
   await page.getByRole('link', { name: 'Products', exact: true }).click();
   await page.getByRole('button', { name: 'Add product' }).click();
   await page.getByLabel('Product name').fill('Tomato tart');
@@ -20,7 +24,7 @@ test('administrator launches a restaurant and cashier completes a cash sale', as
   await expect(page.getByText('Tomato tart')).toBeVisible();
   await page.getByRole('link', { name: 'Inventory' }).click();
   await page.getByLabel('Product', { exact: true }).selectOption({ label: 'Tomato tart (0)' });
-  await page.locator('[name=delta]').fill('2');
+  await page.locator('[name=delta]').fill('3');
   await page.getByLabel('Movement reason').fill('Opening stock');
   await page.getByRole('button', { name: 'Record movement' }).click();
   await expect(page.getByRole('cell', { name: 'Opening stock' })).toBeVisible();
@@ -42,4 +46,18 @@ test('administrator launches a restaurant and cashier completes a cash sale', as
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download receipt PDF' }).click();
   expect((await download).suggestedFilename()).toMatch(/^receipt-.*\.pdf$/);
+  await page.getByRole('button', { name: 'Dismiss' }).click();
+  await page.getByRole('button', { name: /Tomato tart/ }).click();
+  await page.getByRole('button', { name: 'Review payment' }).click();
+  await page.getByLabel('Payment method').selectOption('MANUAL_CARD');
+  await page.getByLabel('Approved terminal transaction reference').fill('terminal-' + stamp);
+  await page.getByRole('button', { name: 'Complete sale' }).click();
+  await expect(page.getByText('Sale completed')).toBeVisible();
+  await page.getByRole('button', { name: 'Dismiss' }).click();
+  await page.getByRole('button', { name: /Tomato tart/ }).click();
+  await page.getByRole('button', { name: 'Review payment' }).click();
+  await page.getByLabel('Payment method').selectOption('QR');
+  await page.getByLabel('QR transaction reference').fill('qr-provider-' + stamp);
+  await page.getByRole('button', { name: 'Complete sale' }).click();
+  await expect(page.getByText('Sale completed')).toBeVisible();
 });

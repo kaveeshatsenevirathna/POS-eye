@@ -26,7 +26,7 @@ test('tenant boundaries, roles, concurrent checkout, immutable sales and refund 
       admin: { email: suffix + '-' + key + '@omnipos.test', name: 'Admin ' + suffix, password },
       ...(staff && { staff }),
       business: { name: 'Integration ' + suffix, type: 'restaurant', currency: 'USD', timezone: 'UTC' },
-      settings: { taxRate: 10, staffDiscountLimit: 5 },
+      settings: { taxRate: 10, staffDiscountLimit: 5, allowManualCard: true },
     });
     assert.equal(response.status, 201);
     return { id: response.data.businessId as string, cookie: response.cookie };
@@ -80,6 +80,27 @@ test('tenant boundaries, roles, concurrent checkout, immutable sales and refund 
     assert.equal((await request(refundPath, 'POST', { reason: 'Duplicate', restocked: true }, a.cookie, a.id)).status, 409);
     assert.equal((await request(path, 'GET', undefined, a.cookie, a.id)).data.revenue, '0');
     assert.equal((await request('products', 'GET', undefined, a.cookie, a.id)).data[0].stock, '1');
+    const paymentProduct = await request('products/new', 'PUT', { name: 'Payment test item', price: '10.00', cost: '4.00' }, b.cookie, b.id);
+    assert.equal(paymentProduct.status, 200);
+    assert.equal((await request('inventory', 'POST', { productId: paymentProduct.data.id, delta: '2', reason: 'Payment test stock' }, b.cookie, b.id)).status, 204);
+    const paymentLines = [{ productId: paymentProduct.data.id, quantity: '1' }];
+    const cardSale = await request('checkout', 'POST', {
+      requestKey: randomUUID(), lines: paymentLines, discount: 0,
+      payments: [{ method: 'MANUAL_CARD', amount: '11.00', reference: 'terminal-' + key }],
+    }, b.cookie, b.id);
+    assert.equal(cardSale.status, 200);
+    assert.equal(cardSale.data.payments[0].method, 'MANUAL_CARD');
+    const qrPayload = {
+      requestKey: randomUUID(), lines: paymentLines, discount: 0,
+      payments: [{ method: 'QR', amount: '11.00', reference: 'qr-provider-' + key }],
+    };
+    const missingQrReference = await request('checkout', 'POST', {
+      ...qrPayload, requestKey: randomUUID(), payments: [{ method: 'QR', amount: '11.00' }],
+    }, b.cookie, b.id);
+    assert.equal(missingQrReference.status, 422);
+    const qrSale = await request('checkout', 'POST', qrPayload, b.cookie, b.id);
+    assert.equal(qrSale.status, 200);
+    assert.equal(qrSale.data.payments[0].method, 'QR');
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     await db.$disconnect();

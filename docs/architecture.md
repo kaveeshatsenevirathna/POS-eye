@@ -10,7 +10,7 @@ The browser presents an opaque HTTP-only session cookie and a business selector.
 
 A checkout takes product IDs, quantities, a discount percentage, and payment tenders. The server reads active products and the current settings, computes decimal totals, and commits the sale, snapshots, payments, and stock movements in a serializable transaction. Conditional stock decrements guard the balance. The tenant-scoped idempotency key is tied to the cashier and request fingerprint. Keep the same request body and key after ambiguous transport failures.
 
-Manual terminal payments are cashier attestations; no provider settlement is recorded. The refund flow records a full cash refund with optional inspected restocking. In reporting, refunds reduce tax and revenue on the refund date and reverse tracked cost for confirmed restockable items. Revenue is tax-exclusive. COGS uses immutable historical item costs. Estimated net profit subtracts recorded expenses; missing item costs make the gross profit estimate incomplete.
+Manual terminal and QR payments are cashier attestations; no provider settlement is recorded. QR transaction references are stored with the payment record. The refund flow records a full cash refund with optional inspected restocking. In reporting, refunds reduce tax and revenue on the refund date and reverse tracked cost for confirmed restockable items. Revenue is tax-exclusive. COGS uses immutable historical item costs. Estimated net profit subtracts recorded expenses; missing item costs make the gross profit estimate incomplete.
 
 ## Implementation status
 
