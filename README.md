@@ -21,7 +21,7 @@ npm.cmd run api
 npm.cmd run dev -- --strictPort
 ```
 
-Open `http://127.0.0.1:5173/setup`. Create your first admin and business; during setup, you can optionally create a staff account with separate login details. Both accounts use the same sign-in page. You can add more accounts and choose their roles later from Employees. Add a product, receive opening stock in Inventory, and create a cashier membership. At checkout, select items, review the server quote, enter cash tendered, and complete the sale. The receipt PDF uses the configured thermal width. Print it from a PDF viewer using your printer driver and the matching paper size.
+Open `http://127.0.0.1:5173/setup`. Create your first admin and business; during setup, you can optionally create a staff account with separate login details. Both accounts use the same sign-in page. You can add more accounts and choose their roles later from Employees. Add a product, receive opening stock in Inventory, and create a cashier membership. At checkout, choose cash, card, or QR payment. Card and QR require staff confirmation in an external terminal or QR app and a transaction reference; POS Eye records the payment but does not process it. Enable manual card payments in Business Settings. The receipt PDF uses the configured thermal width. Print it from a PDF viewer using your printer driver and the matching paper size.
 
 The API health check is available at `http://127.0.0.1:3001/api/health`.
 

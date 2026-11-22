@@ -36,7 +36,7 @@ All routes use the same origin as the browser. JSON mutations require the config
 | PATCH /api/shifts/:id | Member | Close an authorized shift |
 | GET /api/audit | Admin | Recent audit events |
 
-Checkout requires a UUID `requestKey`, `lines` with `productId` and `quantity`, an optional percentage `discount`, and `payments`. Each payment includes `method` and `amount`. Cash requires `tendered`; MANUAL_CARD requires an approved terminal `reference` and an enabled business setting. A zero-total sale uses an empty payments array. Refund requires `reason` and `restocked`.
+Checkout requires a UUID `requestKey`, `lines` with `productId` and `quantity`, an optional percentage `discount`, and `payments`. Each payment includes `method` and `amount`. Cash requires `tendered`; MANUAL_CARD requires an approved terminal `reference` and an enabled business setting; QR requires a transaction `reference`. Card and QR records are manual confirmations only: the API does not process or settle those payments. A zero-total sale uses an empty payments array. Refund requires `reason` and `restocked`.
 
 Common errors use `{ "error": "message" }`, with 401 for a missing session, 403 for denied access, 404 for missing tenant-scoped resources, 409 for conflicts, and 422 for validation errors.
 
