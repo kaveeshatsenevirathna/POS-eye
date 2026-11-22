@@ -1,4 +1,4 @@
-﻿# OmniPOS
+﻿# POS Eye
 
 OmniPOS is a configurable POS workspace built with React, Express, Prisma, and PostgreSQL. This repository contains an initial implementation of the core catalog-to-sale workflow. See [implementation status](docs/architecture.md#implementation-status) before planning a deployment.
 
